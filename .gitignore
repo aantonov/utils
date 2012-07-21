@@ -1,0 +1,8 @@
+#    IDE staff   #
+##################
+*.iml
+*.ec
+*.ipr
+*.iws
+.idea/*
+*/.idea
