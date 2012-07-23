@@ -12,10 +12,9 @@ require 'ldap'
 # host: your LDAP hostname or IP address
 # base: domain name, like 'dc=<subdomain>,dc=<domain>'
 # scope: scope to search (base, one, sub). By default, LDAP::LDAP_SCOPE_SUBTREE
-# filter: search filter equation
 #
 
-def get_users(host, base='dc=griddynamics,dc=net', scope=LDAP::LDAP_SCOPE_SUBTREE, filter='(objectclass=person)')
+def get_users(host, base='dc=griddynamics,dc=net', scope=LDAP::LDAP_SCOPE_SUBTREE)
   attrs = ['uid', 'mail', 'sn', 'givenName' ,'cn', 'sshPublicKey']
 
   conn = LDAP::Conn.new(host)
@@ -27,7 +26,7 @@ def get_users(host, base='dc=griddynamics,dc=net', scope=LDAP::LDAP_SCOPE_SUBTRE
   begin
     users = Hash.new
 
-    conn.search(base, scope, filter, attrs) { |entry|
+    conn.search(base, scope, '(objectclass=person)', attrs) { |entry|
       groups = []
       entry.dn.split(',').each { |dn|
         tmp = dn.split('=')
@@ -48,6 +47,37 @@ def get_users(host, base='dc=griddynamics,dc=net', scope=LDAP::LDAP_SCOPE_SUBTRE
       end
       }
     return users
+  rescue LDAP::ResultError
+    conn.perror("search")
+    exit
+  end
+  conn.perror("search")
+  conn.unbind
+end
+
+
+#
+# Gets information about LDAP groups
+#
+# host: your LDAP hostname or IP address
+# base: domain name, like 'dc=<subdomain>,dc=<domain>'
+# scope: scope to search (base, one, sub). By default, LDAP::LDAP_SCOPE_SUBTREE
+#
+def get_groups(host, base='dc=griddynamics,dc=net', scope=LDAP::LDAP_SCOPE_SUBTREE)
+  attrs = ['cn', 'memberUid']
+
+  conn = LDAP::Conn.new(host)
+  conn.set_option(LDAP::LDAP_OPT_PROTOCOL_VERSION, 3)
+  puts conn.bind('','')
+
+  conn.perror("bind")
+
+  begin
+    groups = Hash.new
+    conn.search(base, scope, '(objectClass=groupOfNames)', attrs) { |entry|
+      groups[entry.vals('cn')[0]] = entry.vals('memberUid')
+    }
+    return groups
   rescue LDAP::ResultError
     conn.perror("search")
     exit
